@@ -14,22 +14,18 @@
 
 use std::env;
 use std::io;
-use std::path::{Path, PathBuf, MAIN_SEPARATOR};
+use std::path::{PathBuf, MAIN_SEPARATOR};
 
 
-fn dir_path_text(o_text: Option<&str>) -> String {
-    if let Some(text) = o_text {
-        if let Some(index) = text.rfind(MAIN_SEPARATOR) {
-            text[..index + 1].to_string()
-        } else {
-            "".to_string()
-        }
+pub fn dir_path_text(text: &str) -> String {
+    if let Some(index) = text.rfind(MAIN_SEPARATOR) {
+        text[..index + 1].to_string()
     } else {
         "".to_string()
     }
 }
 
-fn abs_dir_path(text: &str) -> io::Result<PathBuf> {
+pub fn abs_dir_path(text: &str) -> io::Result<PathBuf> {
     if text.len() == 0 {
         env::current_dir()
     } else if text.starts_with('~') {
@@ -66,8 +62,19 @@ fn abs_dir_path(text: &str) -> io::Result<PathBuf> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn dir_path_text_works() {
+        assert_eq!(dir_path_text("something"), "");
+        assert_eq!(dir_path_text(""), "");
+        assert_eq!(dir_path_text("/"), "/");
+        assert_eq!(dir_path_text("/something"), "/");
+        assert_eq!(dir_path_text("/something/somethingelse"), "/something/");
+        assert_eq!(dir_path_text("something/somethingelse"), "something/");
+        assert_eq!(dir_path_text("~/"), "~/");
+        assert_eq!(dir_path_text("./"), "./");
+        assert_eq!(dir_path_text("~/something"), "~/");
+        assert_eq!(dir_path_text("./something"), "./");
     }
 }
