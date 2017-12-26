@@ -13,8 +13,11 @@
 // limitations under the License.
 
 use std::env;
+use std::error::Error;
+use std::fs::{DirEntry, FileType, Metadata};
 use std::io;
-use std::path::{PathBuf, MAIN_SEPARATOR};
+use std::io::{Write};
+use std::path::{Path, PathBuf, MAIN_SEPARATOR};
 
 
 pub fn dir_path_text(text: &str) -> String {
@@ -58,6 +61,95 @@ pub fn abs_dir_path(text: &str) -> io::Result<PathBuf> {
             Err(io::Error::new(io::ErrorKind::Other, dir_path.to_str().unwrap()))
         }
     }
+}
+
+#[derive(Debug)]
+pub struct UsableDirEntry {
+    dir_entry: DirEntry,
+    file_type: FileType,
+}
+
+impl UsableDirEntry {
+    pub fn path(&self) -> PathBuf {
+        self.dir_entry.path()
+    }
+
+    pub fn file_name(&self) -> String {
+        if let Ok(file_name) = self.dir_entry.file_name().into_string() {
+            file_name
+        } else {
+            panic!("File: {} Line: {} : \"{:?}\" badly designed OS", file!(), line!(), self.dir_entry.file_name())
+        }
+    }
+
+    pub fn is_dir(&self) -> bool {
+        self.file_type.is_dir()
+    }
+
+    pub fn is_file(&self) -> bool {
+        self.file_type.is_file()
+    }
+
+    pub fn is_symlink(&self) -> bool {
+        self.file_type.is_symlink()
+    }
+
+    pub fn file_type(&self) -> FileType {
+        self.file_type
+    }
+
+    pub fn metadata(&self) -> io::Result<Metadata> {
+        self.dir_entry.metadata()
+    }
+}
+
+pub fn usable_dir_entries(dir_path: &Path) -> io::Result<Vec<UsableDirEntry>> {
+    let read_dir = dir_path.read_dir()?;
+    let mut entries: Vec<UsableDirEntry> = Vec::new();
+    for e_entry in read_dir {
+        match e_entry {
+            Ok(dir_entry) => {
+                match dir_entry.metadata() {
+                    Ok(metadata) => {
+                        let file_type = metadata.file_type();
+                        let usable_entry = UsableDirEntry{dir_entry, file_type};
+                        entries.push(usable_entry);
+                    },
+                    Err(err) => match err.kind() {
+                        io::ErrorKind::NotFound => {
+                            // we assume that "not found" is due to a race condition and ignore it
+                        },
+                        io::ErrorKind::PermissionDenied => {
+                            // benign so just report it
+                            if let Err(wtf) = io::stderr().write_fmt(format_args!("{:?}: permission denied accessing dir entry", dir_entry)) {
+                                // we've got no where to go when writing to stderr fails
+                                panic!("File: {} Line: {}: {:?}: writing to stderr failed!!!!", file!(), line!(), wtf)
+                            }
+                        },
+                        _ => {
+                            panic!("{:?}: {:?}: {:?}", err.kind(), err.description(), dir_entry);
+                        }
+                    }
+                }
+            },
+            Err(err) => match err.kind() {
+                io::ErrorKind::NotFound => {
+                    // we assume that "not found" is due to a race condition and ignore it
+                },
+                io::ErrorKind::PermissionDenied => {
+                    // benign so just report it
+                    if let Err(wtf) = io::stderr().write_fmt(format_args!("{:?}: permission denied accessing dir entry", dir_path)) {
+                        // we've got no where to go when writing to stderr fails
+                        panic!("File: {} Line: {}: {:?}: writing to stderr failed!!!!", file!(), line!(), wtf)
+                    }
+                },
+                _ => {
+                    panic!("{:?}: {:?}: {:?}", err.kind(), err.description(), dir_path);
+                }
+            }
+        }
+    }
+    Ok(entries)
 }
 
 #[cfg(test)]
