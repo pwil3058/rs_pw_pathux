@@ -17,50 +17,87 @@ use std::error::Error;
 use std::fs::{DirEntry, FileType, Metadata};
 use std::io;
 use std::io::{Write};
-use std::path::{Path, PathBuf, MAIN_SEPARATOR};
+use std::path::{Component, Path, PathBuf, MAIN_SEPARATOR};
 
-
-pub fn dir_path_text(text: &str) -> String {
+fn split_path_text(text: &str) -> (&str, &str) {
     if let Some(index) = text.rfind(MAIN_SEPARATOR) {
-        text[..index + 1].to_string()
+        (&text[..index + 1], &text[index + 1..])
     } else {
-        "".to_string()
+        ("", text)
     }
 }
 
-pub fn abs_dir_path(text: &str) -> io::Result<PathBuf> {
-    if text.len() == 0 {
-        env::current_dir()
-    } else if text.starts_with('~') {
-        if let Some(index) = text.find(MAIN_SEPARATOR) {
-            if index == 1 {
-                if let Some(mut dir_path) = env::home_dir() {
-                    dir_path.push(&text[index + 1..]);
-                    Ok(dir_path)
+pub fn dir_path_text(text: &str) -> &str {
+    split_path_text(text).0
+}
+
+pub fn path_to_string(path: &Path) -> String {
+    if let Some(path_str) = path.to_str() {
+        path_str.to_string()
+    } else {
+        panic!("File: {} Line: {} : non UniCode file path???", file!(), line!())
+    }
+}
+
+pub fn expand_home_dir(path: &Path) -> Option<PathBuf> {
+    if path.is_absolute() {
+        return Some(path.to_path_buf());
+    } else if !path.exists() {
+        let mut components = path.components();
+        if let Some(first_component) = components.next() {
+            if let Component::Normal(text) = first_component {
+                if text == "~" {
+                    if let Some(home_dir_path) = env::home_dir() {
+                        return Some(home_dir_path.join(components.as_path()));
+                    }
+                }
+            }
+        }
+    };
+    None
+}
+
+pub fn expand_home_dir_or_mine(path: &Path) -> PathBuf {
+    expand_home_dir(path).unwrap_or(path.to_path_buf())
+}
+
+pub fn absolute_path_buf(path: &Path) -> PathBuf {
+    if path.is_relative() {
+        if let Ok(current_dir_path) = env::current_dir() {
+            let mut components = path.components();
+            if let Some(first_component) = components.next() {
+                if let Component::CurDir = first_component {
+                    return current_dir_path.join(components.as_path());
                 } else {
-                    Err(io::Error::new(io::ErrorKind::Other, "Could not find home directory"))
+                    return current_dir_path.join(path);
                 }
             } else {
-                let msg = format!("Could not find {}'s home directory", &text[1..index]);
-                Err(io::Error::new(io::ErrorKind::Other, msg))
+                return current_dir_path
             }
         } else {
-            if let Some(dir_path) = env::home_dir() {
-                Ok(dir_path)
+            panic!("File: {} Line: {} : can't find current directory???", file!(), line!())
+        }
+    };
+    path.to_path_buf()
+}
+
+pub fn relative_path_buf(path: &Path) -> Option<PathBuf> {
+    if path.is_absolute() {
+        if let Ok(current_dir_path) = env::current_dir() {
+            if let Ok(rel_path) = path.strip_prefix(&current_dir_path) {
+                return Some(rel_path.to_path_buf());
             } else {
-                Err(io::Error::new(io::ErrorKind::Other, "Could not find home directory"))
+                return None
             }
-        }
-    } else if text.starts_with('.') {
-        PathBuf::from(text).canonicalize()
-    } else {
-        let dir_path = PathBuf::from(text);
-        if dir_path.is_absolute() {
-            Ok(dir_path)
         } else {
-            Err(io::Error::new(io::ErrorKind::Other, dir_path.to_str().unwrap()))
+            panic!("File: {} Line: {} : can't find current directory???", file!(), line!())
         }
-    }
+    };
+    Some(path.to_path_buf())
+}
+
+pub fn relative_path_buf_or_mine(path: &Path) -> PathBuf {
+    relative_path_buf(path).unwrap_or(path.to_path_buf())
 }
 
 #[derive(Debug)]
@@ -157,6 +194,22 @@ mod tests {
     use super::*;
 
     #[test]
+    fn split_path_text_works() {
+        match MAIN_SEPARATOR {
+            '/' => {
+                assert_eq!(split_path_text("something"), ("", "something"));
+                assert_eq!(split_path_text(""), ("", ""));
+                assert_eq!(split_path_text("/"), ("/", ""));
+                assert_eq!(split_path_text("/something"), ("/", "something"));
+                assert_eq!(split_path_text("/something/somethingelse"), ("/something/", "somethingelse"));
+                assert_eq!(split_path_text("something/somethingelse"), ("something/", "somethingelse"));
+                assert_eq!(split_path_text("~"), ("", "~"));
+            },
+            _ => panic!("File: {} Line: {} : new test required"),
+        }
+    }
+
+    #[test]
     fn dir_path_text_works() {
         assert_eq!(dir_path_text("something"), "");
         assert_eq!(dir_path_text(""), "");
@@ -168,5 +221,7 @@ mod tests {
         assert_eq!(dir_path_text("./"), "./");
         assert_eq!(dir_path_text("~/something"), "~/");
         assert_eq!(dir_path_text("./something"), "./");
+        assert_eq!(dir_path_text("~/something/somethingelse"), "~/something/");
+        assert_eq!(dir_path_text("./something/somethingelse"), "./something/");
     }
 }
