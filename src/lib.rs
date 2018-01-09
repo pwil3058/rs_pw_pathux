@@ -19,7 +19,7 @@ use std::io;
 use std::io::{Write};
 use std::path::{Component, Path, PathBuf, MAIN_SEPARATOR};
 
-fn split_path_text(text: &str) -> (&str, &str) {
+pub fn split_path_text(text: &str) -> (&str, &str) {
     if let Some(index) = text.rfind(MAIN_SEPARATOR) {
         (&text[..index + 1], &text[index + 1..])
     } else {
@@ -29,6 +29,10 @@ fn split_path_text(text: &str) -> (&str, &str) {
 
 pub fn dir_path_text(text: &str) -> &str {
     split_path_text(text).0
+}
+
+pub fn file_name_text(text: &str) -> &str {
+    split_path_text(text).1
 }
 
 pub fn path_to_string(path: &Path) -> String {
