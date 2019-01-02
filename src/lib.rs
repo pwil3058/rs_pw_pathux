@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+extern crate dirs;
+
 use std::env;
 use std::error::Error;
 use std::fs::{DirEntry, FileType, Metadata};
@@ -51,7 +53,7 @@ pub fn expand_home_dir(path: &Path) -> Option<PathBuf> {
         if let Some(first_component) = components.next() {
             if let Component::Normal(text) = first_component {
                 if text == "~" {
-                    if let Some(home_dir_path) = env::home_dir() {
+                    if let Some(home_dir_path) = dirs::home_dir() {
                         return Some(home_dir_path.join(components.as_path()));
                     }
                 }
