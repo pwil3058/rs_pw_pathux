@@ -45,6 +45,24 @@ pub fn path_to_string(path: &Path) -> String {
     }
 }
 
+pub fn first_subpath_as_string(path: &Path) -> Option<String> {
+    for c in path.components() {
+        match c {
+            Component::RootDir => continue,
+            Component::Normal(component) => {
+                match component.to_os_string().into_string() {
+                    Ok(oss) => return Some(oss),
+                    Err(err) => panic!("{:?}: line {:?}: {:?}", file!(), line!(), err)
+                };
+            },
+            Component::Prefix(_) => panic!("Not implemented for Windows"),
+            Component::ParentDir => panic!("Illegal component"),
+            _ => ()
+        }
+    }
+    None
+}
+
 pub fn expand_home_dir(path: &Path) -> Option<PathBuf> {
     if path.is_absolute() {
         return Some(path.to_path_buf());
