@@ -16,6 +16,7 @@ extern crate dirs;
 
 use std::env;
 use std::error::Error;
+use std::ffi::OsString;
 use std::fs::{DirEntry, FileType, Metadata};
 use std::io;
 use std::io::{Write};
@@ -54,6 +55,21 @@ pub fn first_subpath_as_string(path: &Path) -> Option<String> {
                     Ok(oss) => return Some(oss),
                     Err(err) => panic!("{:?}: line {:?}: {:?}", file!(), line!(), err)
                 };
+            },
+            Component::Prefix(_) => panic!("Not implemented for Windows"),
+            Component::ParentDir => panic!("Illegal component"),
+            _ => ()
+        }
+    }
+    None
+}
+
+pub fn first_subpath_as_os_string(path: &Path) -> Option<OsString> {
+    for c in path.components() {
+        match c {
+            Component::RootDir => continue,
+            Component::Normal(component) => {
+                return Some(component.to_os_string());
             },
             Component::Prefix(_) => panic!("Not implemented for Windows"),
             Component::ParentDir => panic!("Illegal component"),
