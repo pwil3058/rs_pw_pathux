@@ -19,7 +19,7 @@ use std::error::Error;
 use std::ffi::OsString;
 use std::fs::{DirEntry, FileType, Metadata};
 use std::io;
-use std::io::{Write};
+use std::io::Write;
 use std::path::{Component, Path, PathBuf, MAIN_SEPARATOR};
 
 pub fn split_path_text(text: &str) -> (&str, &str) {
@@ -42,7 +42,11 @@ pub fn path_to_string(path: &Path) -> String {
     if let Some(path_str) = path.to_str() {
         path_str.to_string()
     } else {
-        panic!("File: {} Line: {} : non UniCode file path???", file!(), line!())
+        panic!(
+            "File: {} Line: {} : non UniCode file path???",
+            file!(),
+            line!()
+        )
     }
 }
 
@@ -53,12 +57,12 @@ pub fn first_subpath_as_string(path: &Path) -> Option<String> {
             Component::Normal(component) => {
                 match component.to_os_string().into_string() {
                     Ok(oss) => return Some(oss),
-                    Err(err) => panic!("{:?}: line {:?}: {:?}", file!(), line!(), err)
+                    Err(err) => panic!("{:?}: line {:?}: {:?}", file!(), line!(), err),
                 };
-            },
+            }
             Component::Prefix(_) => panic!("Not implemented for Windows"),
             Component::ParentDir => panic!("Illegal component"),
-            _ => ()
+            _ => (),
         }
     }
     None
@@ -70,10 +74,10 @@ pub fn first_subpath_as_os_string(path: &Path) -> Option<OsString> {
             Component::RootDir => continue,
             Component::Normal(component) => {
                 return Some(component.to_os_string());
-            },
+            }
             Component::Prefix(_) => panic!("Not implemented for Windows"),
             Component::ParentDir => panic!("Illegal component"),
-            _ => ()
+            _ => (),
         }
     }
     None
@@ -112,10 +116,14 @@ pub fn absolute_path_buf(path: &Path) -> PathBuf {
                     return current_dir_path.join(path);
                 }
             } else {
-                return current_dir_path
+                return current_dir_path;
             }
         } else {
-            panic!("File: {} Line: {} : can't find current directory???", file!(), line!())
+            panic!(
+                "File: {} Line: {} : can't find current directory???",
+                file!(),
+                line!()
+            )
         }
     };
     path.to_path_buf()
@@ -127,10 +135,14 @@ pub fn relative_path_buf(path: &Path) -> Option<PathBuf> {
             if let Ok(rel_path) = path.strip_prefix(&current_dir_path) {
                 return Some(rel_path.to_path_buf());
             } else {
-                return None
+                return None;
             }
         } else {
-            panic!("File: {} Line: {} : can't find current directory???", file!(), line!())
+            panic!(
+                "File: {} Line: {} : can't find current directory???",
+                file!(),
+                line!()
+            )
         }
     };
     Some(path.to_path_buf())
@@ -155,7 +167,12 @@ impl UsableDirEntry {
         if let Ok(file_name) = self.dir_entry.file_name().into_string() {
             file_name
         } else {
-            panic!("File: {} Line: {} : \"{:?}\" badly designed OS", file!(), line!(), self.dir_entry.file_name())
+            panic!(
+                "File: {} Line: {} : \"{:?}\" badly designed OS",
+                file!(),
+                line!(),
+                self.dir_entry.file_name()
+            )
         }
     }
 
@@ -189,41 +206,60 @@ pub fn usable_dir_entries(dir_path: &Path) -> io::Result<Vec<UsableDirEntry>> {
                 match dir_entry.metadata() {
                     Ok(metadata) => {
                         let file_type = metadata.file_type();
-                        let usable_entry = UsableDirEntry{dir_entry, file_type};
+                        let usable_entry = UsableDirEntry {
+                            dir_entry,
+                            file_type,
+                        };
                         entries.push(usable_entry);
-                    },
+                    }
                     Err(err) => match err.kind() {
                         io::ErrorKind::NotFound => {
                             // we assume that "not found" is due to a race condition and ignore it
-                        },
+                        }
                         io::ErrorKind::PermissionDenied => {
                             // benign so just report it
-                            if let Err(wtf) = io::stderr().write_fmt(format_args!("{:?}: permission denied accessing dir entry", dir_entry)) {
+                            if let Err(wtf) = io::stderr().write_fmt(format_args!(
+                                "{:?}: permission denied accessing dir entry",
+                                dir_entry
+                            )) {
                                 // we've got no where to go when writing to stderr fails
-                                panic!("File: {} Line: {}: {:?}: writing to stderr failed!!!!", file!(), line!(), wtf)
+                                panic!(
+                                    "File: {} Line: {}: {:?}: writing to stderr failed!!!!",
+                                    file!(),
+                                    line!(),
+                                    wtf
+                                )
                             }
-                        },
+                        }
                         _ => {
                             panic!("{:?}: {:?}: {:?}", err.kind(), err.description(), dir_entry);
                         }
-                    }
+                    },
                 }
-            },
+            }
             Err(err) => match err.kind() {
                 io::ErrorKind::NotFound => {
                     // we assume that "not found" is due to a race condition and ignore it
-                },
+                }
                 io::ErrorKind::PermissionDenied => {
                     // benign so just report it
-                    if let Err(wtf) = io::stderr().write_fmt(format_args!("{:?}: permission denied accessing dir entry", dir_path)) {
+                    if let Err(wtf) = io::stderr().write_fmt(format_args!(
+                        "{:?}: permission denied accessing dir entry",
+                        dir_path
+                    )) {
                         // we've got no where to go when writing to stderr fails
-                        panic!("File: {} Line: {}: {:?}: writing to stderr failed!!!!", file!(), line!(), wtf)
+                        panic!(
+                            "File: {} Line: {}: {:?}: writing to stderr failed!!!!",
+                            file!(),
+                            line!(),
+                            wtf
+                        )
                     }
-                },
+                }
                 _ => {
                     panic!("{:?}: {:?}: {:?}", err.kind(), err.description(), dir_path);
                 }
-            }
+            },
         }
     }
     Ok(entries)
@@ -241,10 +277,16 @@ mod tests {
                 assert_eq!(split_path_text(""), ("", ""));
                 assert_eq!(split_path_text("/"), ("/", ""));
                 assert_eq!(split_path_text("/something"), ("/", "something"));
-                assert_eq!(split_path_text("/something/somethingelse"), ("/something/", "somethingelse"));
-                assert_eq!(split_path_text("something/somethingelse"), ("something/", "somethingelse"));
+                assert_eq!(
+                    split_path_text("/something/somethingelse"),
+                    ("/something/", "somethingelse")
+                );
+                assert_eq!(
+                    split_path_text("something/somethingelse"),
+                    ("something/", "somethingelse")
+                );
                 assert_eq!(split_path_text("~"), ("", "~"));
-            },
+            }
             _ => panic!("File: {} Line: {} : new test required"),
         }
     }
