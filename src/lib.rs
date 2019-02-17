@@ -22,6 +22,9 @@ use std::io;
 use std::io::Write;
 use std::path::{Component, Path, PathBuf, MAIN_SEPARATOR};
 
+#[macro_use]
+pub mod str_path;
+
 pub fn split_path_text(text: &str) -> (&str, &str) {
     if let Some(index) = text.rfind(MAIN_SEPARATOR) {
         (&text[..index + 1], &text[index + 1..])
