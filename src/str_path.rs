@@ -15,7 +15,9 @@
 //! A module to provide a mechanism for doing file path operations
 //! on Strings and str.
 
-pub use std::path::Path;
+pub use std::convert::From;
+pub use std::ffi::OsStr;
+pub use std::path::{Component, Path, Prefix};
 
 #[macro_export]
 macro_rules! path_file_name {
@@ -37,6 +39,93 @@ macro_rules! path_parent {
     };
 }
 
+#[macro_export]
+macro_rules! str_path_components {
+    ( $s:expr ) => {{
+        Path::new($s).components().enumerate().map(|(i, c)| {
+            if i == 0 && c == Component::Normal(OsStr::new("~")) {
+                StrPathComponent::HomeDir
+            } else {
+                StrPathComponent::from(c)
+            }
+        })
+    }};
+}
+
+#[macro_export]
+macro_rules! str_path_is_absolute {
+    ( $s:expr ) => {{
+        match str_path_components!($s).take(1).next() {
+            Some(StrPathComponent::HomeDir) => false,
+            _ => Path::new($s).is_absolute(),
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! str_path_is_relative {
+    ( $s:expr ) => {{
+        !str_path_is_absolute!($s)
+    }};
+}
+
+#[derive(Debug, PartialEq)]
+pub enum StrPathPrefix {
+    Verbatim(String),
+    VerbatimUNC(String, String),
+    VerbatimDisk(u8),
+    DeviceNS(String),
+    UNC(String, String),
+    Disk(u8),
+}
+
+impl<'a> From<Prefix<'a>> for StrPathPrefix {
+    fn from(prefix: Prefix) -> Self {
+        match prefix {
+            Prefix::Verbatim(os_str) => {
+                StrPathPrefix::Verbatim(os_str.to_string_lossy().into_owned())
+            }
+            Prefix::VerbatimUNC(os_str1, os_str2) => StrPathPrefix::VerbatimUNC(
+                os_str1.to_string_lossy().into_owned(),
+                os_str2.to_string_lossy().into_owned(),
+            ),
+            Prefix::VerbatimDisk(u8) => StrPathPrefix::VerbatimDisk(u8),
+            Prefix::DeviceNS(os_str) => {
+                StrPathPrefix::DeviceNS(os_str.to_string_lossy().into_owned())
+            }
+            Prefix::UNC(os_str1, os_str2) => StrPathPrefix::UNC(
+                os_str1.to_string_lossy().into_owned(),
+                os_str2.to_string_lossy().into_owned(),
+            ),
+            Prefix::Disk(u8) => StrPathPrefix::Disk(u8),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum StrPathComponent {
+    Prefix(StrPathPrefix),
+    RootDir,
+    HomeDir,
+    CurDir,
+    ParentDir,
+    Normal(String),
+}
+
+impl<'a> From<Component<'a>> for StrPathComponent {
+    fn from(component: Component) -> Self {
+        match component {
+            Component::Prefix(prefix) => StrPathComponent::Prefix(prefix.kind().into()),
+            Component::RootDir => StrPathComponent::RootDir,
+            Component::CurDir => StrPathComponent::CurDir,
+            Component::ParentDir => StrPathComponent::ParentDir,
+            Component::Normal(os_str) => {
+                StrPathComponent::Normal(os_str.to_string_lossy().into_owned())
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -44,16 +133,53 @@ mod tests {
     #[test]
     fn str_path_works() {
         assert_eq!(path_file_name!("/home/peter"), Some("peter".to_string()));
-        assert_eq!(path_file_name!(&"/home/peter".to_string()), Some("peter".to_string()));
+        assert_eq!(
+            path_file_name!(&"/home/peter".to_string()),
+            Some("peter".to_string())
+        );
         assert_eq!(path_file_name!("/home"), Some("home".to_string()));
         assert_eq!(path_file_name!("/"), None);
         assert_eq!(path_file_name!("peter"), Some("peter".to_string()));
         assert_eq!(path_file_name!("home/"), Some("home".to_string()));
 
         assert_eq!(path_parent!("/home/peter"), Some("/home".to_string()));
-        assert_eq!(path_parent!(&"/home/peter".to_string()), Some("/home".to_string()));
+        assert_eq!(
+            path_parent!(&"/home/peter".to_string()),
+            Some("/home".to_string())
+        );
         assert_eq!(path_parent!(&"/home".to_string()), Some("/".to_string()));
         assert_eq!(path_parent!(&"/".to_string()), None);
         assert_eq!(path_parent!(&"peter".to_string()), Some("".to_string()));
+
+        let mut components = str_path_components!("/home/peter/SRC");
+        assert_eq!(components.next(), Some(StrPathComponent::RootDir));
+        assert_eq!(
+            components.next(),
+            Some(StrPathComponent::Normal("home".to_string()))
+        );
+        assert_eq!(
+            components.next(),
+            Some(StrPathComponent::Normal("peter".to_string()))
+        );
+        assert_eq!(
+            components.next(),
+            Some(StrPathComponent::Normal("SRC".to_string()))
+        );
+        assert_eq!(components.next(), None);
+        let mut components = str_path_components!("./peter/SRC");
+        assert_eq!(components.next(), Some(StrPathComponent::CurDir));
+        let mut components = str_path_components!("~/SRC");
+        assert_eq!(components.next(), Some(StrPathComponent::HomeDir));
+        assert_eq!(
+            components.next(),
+            Some(StrPathComponent::Normal("SRC".to_string()))
+        );
+        assert_eq!(components.next(), None);
+
+        assert!(str_path_is_absolute!("/home"));
+        assert!(!str_path_is_absolute!("~/SRC"));
+
+        assert!(!str_path_is_relative!("/home"));
+        assert!(str_path_is_relative!("~/SRC"));
     }
 }
