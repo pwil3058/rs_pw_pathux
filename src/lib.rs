@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate dirs;
+pub extern crate dirs;
 
 use std::env;
 use std::error::Error;
@@ -167,16 +167,7 @@ impl UsableDirEntry {
     }
 
     pub fn file_name(&self) -> String {
-        if let Ok(file_name) = self.dir_entry.file_name().into_string() {
-            file_name
-        } else {
-            panic!(
-                "File: {} Line: {} : \"{:?}\" badly designed OS",
-                file!(),
-                line!(),
-                self.dir_entry.file_name()
-            )
-        }
+        self.dir_entry.file_name().to_string_lossy().into_owned()
     }
 
     pub fn is_dir(&self) -> bool {

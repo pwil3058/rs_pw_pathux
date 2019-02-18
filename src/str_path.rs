@@ -16,11 +16,15 @@
 //! on Strings and str.
 
 pub use std::convert::From;
+pub use std::env;
 pub use std::ffi::OsStr;
+pub use std::io;
 pub use std::path::{Component, Path, Prefix};
 
+pub use dirs;
+
 #[macro_export]
-macro_rules! path_file_name {
+macro_rules! str_path_file_name {
     ( $s:expr ) => {
         match Path::new($s).file_name() {
             Some(os_str) => Some(os_str.to_string_lossy().into_owned()),
@@ -30,7 +34,7 @@ macro_rules! path_file_name {
 }
 
 #[macro_export]
-macro_rules! path_parent {
+macro_rules! str_path_parent {
     ( $s:expr ) => {
         match Path::new($s).parent() {
             Some(path) => Some(path.to_string_lossy().into_owned()),
@@ -65,7 +69,71 @@ macro_rules! str_path_is_absolute {
 #[macro_export]
 macro_rules! str_path_is_relative {
     ( $s:expr ) => {{
-        !str_path_is_absolute!($s)
+        match str_path_components!($s).take(1).next() {
+            Some(StrPathComponent::HomeDir) => false,
+            _ => Path::new($s).is_relative(),
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! str_path_is_relative_to_home {
+    ( $s:expr ) => {{
+        match str_path_components!($s).take(1).next() {
+            Some(StrPathComponent::HomeDir) => true,
+            _ => false,
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! str_path_absolute {
+    ( $s:expr ) => {{
+        if str_path_is_absolute!($s) {
+            Ok($s.to_string())
+        } else if str_path_is_relative!($s) {
+            match env::current_dir() {
+                Ok(mut cur_dir) => {
+                    for c in Path::new($s)
+                        .components()
+                        .skip_while(|c| *c == Component::CurDir)
+                    {
+                        cur_dir.push(c)
+                    }
+                    Ok(cur_dir.to_string_lossy().into_owned())
+                }
+                Err(err) => Err(err),
+            }
+        } else {
+            match dirs::home_dir() {
+                Some(mut home_dir) => {
+                    for c in Path::new($s).components().skip(1) {
+                        home_dir.push(c)
+                    }
+                    Ok(home_dir.to_string_lossy().into_owned())
+                }
+                None => Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    "could not find home directory",
+                )),
+            }
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! str_path_simple_relative {
+    ( $s:expr ) => {{
+        match env::current_dir() {
+            Ok(curr_dir) => match str_path_absolute!($s) {
+                Ok(abs_path) => match Path::new(&abs_path).strip_prefix(curr_dir) {
+                    Ok(path) => Ok(path.to_string_lossy().into_owned()),
+                    Err(err) => Err(io::Error::new(io::ErrorKind::Other, err)),
+                },
+                Err(err) => Err(err),
+            },
+            Err(err) => Err(err),
+        }
     }};
 }
 
@@ -132,24 +200,30 @@ mod tests {
 
     #[test]
     fn str_path_works() {
-        assert_eq!(path_file_name!("/home/peter"), Some("peter".to_string()));
         assert_eq!(
-            path_file_name!(&"/home/peter".to_string()),
+            str_path_file_name!("/home/peter"),
             Some("peter".to_string())
         );
-        assert_eq!(path_file_name!("/home"), Some("home".to_string()));
-        assert_eq!(path_file_name!("/"), None);
-        assert_eq!(path_file_name!("peter"), Some("peter".to_string()));
-        assert_eq!(path_file_name!("home/"), Some("home".to_string()));
-
-        assert_eq!(path_parent!("/home/peter"), Some("/home".to_string()));
         assert_eq!(
-            path_parent!(&"/home/peter".to_string()),
+            str_path_file_name!(&"/home/peter".to_string()),
+            Some("peter".to_string())
+        );
+        assert_eq!(str_path_file_name!("/home"), Some("home".to_string()));
+        assert_eq!(str_path_file_name!("/"), None);
+        assert_eq!(str_path_file_name!("peter"), Some("peter".to_string()));
+        assert_eq!(str_path_file_name!("home/"), Some("home".to_string()));
+
+        assert_eq!(str_path_parent!("/home/peter"), Some("/home".to_string()));
+        assert_eq!(
+            str_path_parent!(&"/home/peter".to_string()),
             Some("/home".to_string())
         );
-        assert_eq!(path_parent!(&"/home".to_string()), Some("/".to_string()));
-        assert_eq!(path_parent!(&"/".to_string()), None);
-        assert_eq!(path_parent!(&"peter".to_string()), Some("".to_string()));
+        assert_eq!(
+            str_path_parent!(&"/home".to_string()),
+            Some("/".to_string())
+        );
+        assert_eq!(str_path_parent!(&"/".to_string()), None);
+        assert_eq!(str_path_parent!(&"peter".to_string()), Some("".to_string()));
 
         let mut components = str_path_components!("/home/peter/SRC");
         assert_eq!(components.next(), Some(StrPathComponent::RootDir));
@@ -180,6 +254,32 @@ mod tests {
         assert!(!str_path_is_absolute!("~/SRC"));
 
         assert!(!str_path_is_relative!("/home"));
-        assert!(str_path_is_relative!("~/SRC"));
+        assert!(!str_path_is_relative!("~/SRC"));
+        assert!(str_path_is_relative!("./SRC"));
+        assert!(str_path_is_relative!("SRC"));
+        assert!(str_path_is_relative_to_home!("~/SRC"));
+
+        assert_eq!(
+            str_path_absolute!("./SRC").unwrap(),
+            "/home/peter/SRC/GITHUB/rs_gwsm_git.git/pw_pathux/SRC".to_string()
+        );
+        assert_eq!(
+            str_path_absolute!("/home/peter/SRC").unwrap(),
+            "/home/peter/SRC".to_string()
+        );
+        assert_eq!(
+            str_path_absolute!("~/SRC").unwrap(),
+            "/home/peter/SRC".to_string()
+        );
+
+        assert_eq!(
+            str_path_simple_relative!("./SRC").unwrap(),
+            "SRC".to_string()
+        );
+        assert_eq!(
+            str_path_simple_relative!("/home/peter/SRC/GITHUB/rs_gwsm_git.git/pw_pathux/SRC")
+                .unwrap(),
+            "SRC".to_string()
+        );
     }
 }
