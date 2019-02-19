@@ -21,6 +21,9 @@ pub use std::ffi::OsStr;
 pub use std::io;
 pub use std::path::{Component, Path, PathBuf, Prefix, MAIN_SEPARATOR};
 
+use std::iter::Map;
+use std::string::ToString;
+
 pub use dirs;
 
 #[macro_export]
@@ -137,6 +140,16 @@ macro_rules! str_path_simple_relative {
     }};
 }
 
+pub trait StrPath {
+    fn path_components(&self) -> Vec<StrPathComponent>;
+}
+
+impl StrPath for str {
+    fn path_components(&self) -> Vec<StrPathComponent> {
+        str_path_components!(self).collect()
+    }
+}
+
 pub trait StringPathBuf {
     fn path_push(&mut self, path: &str);
 }
@@ -167,6 +180,32 @@ pub enum StrPathPrefix {
     DeviceNS(String),
     UNC(String, String),
     Disk(u8),
+}
+
+impl ToString for StrPathPrefix {
+    fn to_string(&self) -> String {
+        match self {
+            StrPathPrefix::Verbatim(string) => {
+                format!(r"\\?\{}", string)
+            }
+            StrPathPrefix::VerbatimUNC(server, share) => {
+                format!(r"\\?\UNC\{}\{}", server, share)
+            }
+            StrPathPrefix::VerbatimDisk(vid) => {
+                format!(r"\\?\{}:\", vid.to_string())
+            }
+            StrPathPrefix::DeviceNS(device) => {
+                format!(r"\\.\{}", device)
+            }
+            StrPathPrefix::UNC(server, share) => {
+                format!(r"\\{}\{}", server, share)
+            }
+            StrPathPrefix::Disk(id) => {
+                format!(r"{}:", id.to_string())
+            }
+        }
+
+    }
 }
 
 impl<'a> From<Prefix<'a>> for StrPathPrefix {
@@ -200,6 +239,20 @@ pub enum StrPathComponent {
     CurDir,
     ParentDir,
     Normal(String),
+}
+
+impl ToString for StrPathComponent {
+    fn to_string(&self) -> String {
+        match self {
+            StrPathComponent::Prefix(stp) => stp.to_string(),
+            StrPathComponent::RootDir => MAIN_SEPARATOR.to_string(),
+            StrPathComponent::HomeDir => "~".to_string(),
+            StrPathComponent::CurDir => ".".to_string(),
+            StrPathComponent::ParentDir => "..".to_string(),
+            StrPathComponent::Normal(string) => string.clone(),
+        }
+
+    }
 }
 
 impl<'a> From<Component<'a>> for StrPathComponent {
