@@ -162,6 +162,10 @@ pub struct UsableDirEntry {
 }
 
 impl UsableDirEntry {
+    pub fn get_entries<P: AsRef<Path>>(dir_path: &P) -> io::Result<Vec<UsableDirEntry>> {
+        usable_dir_entries(dir_path)
+    }
+
     pub fn path(&self) -> PathBuf {
         self.dir_entry.path()
     }
@@ -191,7 +195,8 @@ impl UsableDirEntry {
     }
 }
 
-pub fn usable_dir_entries(dir_path: &Path) -> io::Result<Vec<UsableDirEntry>> {
+pub fn usable_dir_entries<P: AsRef<Path>>(dir_path: &P) -> io::Result<Vec<UsableDirEntry>> {
+    let dir_path: &Path = dir_path.as_ref();
     let read_dir = dir_path.read_dir()?;
     let mut entries: Vec<UsableDirEntry> = Vec::new();
     for e_entry in read_dir {
