@@ -140,11 +140,21 @@ macro_rules! str_path_simple_relative {
     }};
 }
 
+#[macro_export]
+macro_rules! str_path_join {
+    ( $s1:expr, $s2:expr ) => {{
+        Path::new($s1)
+            .join(Path::new($s2))
+            .to_string_lossy()
+            .into_owned()
+    }};
+}
+
 pub trait StrPath {
     fn path_components(&self) -> Vec<StrPathComponent>;
 }
 
-impl StrPath for str {
+impl StrPath for String {
     fn path_components(&self) -> Vec<StrPathComponent> {
         str_path_components!(self).collect()
     }
@@ -185,26 +195,13 @@ pub enum StrPathPrefix {
 impl ToString for StrPathPrefix {
     fn to_string(&self) -> String {
         match self {
-            StrPathPrefix::Verbatim(string) => {
-                format!(r"\\?\{}", string)
-            }
-            StrPathPrefix::VerbatimUNC(server, share) => {
-                format!(r"\\?\UNC\{}\{}", server, share)
-            }
-            StrPathPrefix::VerbatimDisk(vid) => {
-                format!(r"\\?\{}:\", vid.to_string())
-            }
-            StrPathPrefix::DeviceNS(device) => {
-                format!(r"\\.\{}", device)
-            }
-            StrPathPrefix::UNC(server, share) => {
-                format!(r"\\{}\{}", server, share)
-            }
-            StrPathPrefix::Disk(id) => {
-                format!(r"{}:", id.to_string())
-            }
+            StrPathPrefix::Verbatim(string) => format!(r"\\?\{}", string),
+            StrPathPrefix::VerbatimUNC(server, share) => format!(r"\\?\UNC\{}\{}", server, share),
+            StrPathPrefix::VerbatimDisk(vid) => format!(r"\\?\{}:\", vid.to_string()),
+            StrPathPrefix::DeviceNS(device) => format!(r"\\.\{}", device),
+            StrPathPrefix::UNC(server, share) => format!(r"\\{}\{}", server, share),
+            StrPathPrefix::Disk(id) => format!(r"{}:", id.to_string()),
         }
-
     }
 }
 
@@ -251,7 +248,6 @@ impl ToString for StrPathComponent {
             StrPathComponent::ParentDir => "..".to_string(),
             StrPathComponent::Normal(string) => string.clone(),
         }
-
     }
 }
 
@@ -357,6 +353,11 @@ mod tests {
                 .unwrap(),
             "SRC".to_string()
         );
+
+        assert_eq!(
+            str_path_join!("/home/peter/SRC", "GITHUB/rs_gwsm_git.git/pw_pathux/SRC"),
+            "/home/peter/SRC/GITHUB/rs_gwsm_git.git/pw_pathux/SRC".to_string()
+        )
     }
 
     #[cfg(target_family = "unix")]
