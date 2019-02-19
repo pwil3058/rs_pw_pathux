@@ -19,7 +19,7 @@ pub use std::convert::From;
 pub use std::env;
 pub use std::ffi::OsStr;
 pub use std::io;
-pub use std::path::{Component, Path, Prefix};
+pub use std::path::{Component, Path, PathBuf, Prefix, MAIN_SEPARATOR};
 
 pub use dirs;
 
@@ -137,6 +137,28 @@ macro_rules! str_path_simple_relative {
     }};
 }
 
+pub trait StringPathBuf {
+    fn path_push(&mut self, path: &str);
+}
+
+impl StringPathBuf for String {
+    fn path_push(&mut self, path: &str) {
+        if cfg!(target_os = "windows") {
+            let mut new_path = PathBuf::new();
+            new_path.push(self.clone());
+            new_path.push(path);
+            self.clear();
+            self.push_str(&new_path.to_string_lossy().into_owned());
+        } else if str_path_is_absolute!(path) {
+            self.clear();
+            self.push_str(path);
+        } else {
+            self.push(MAIN_SEPARATOR);
+            self.push_str(path);
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum StrPathPrefix {
     Verbatim(String),
@@ -198,6 +220,7 @@ impl<'a> From<Component<'a>> for StrPathComponent {
 mod tests {
     use super::*;
 
+    #[cfg(target_family = "unix")]
     #[test]
     fn str_path_works() {
         assert_eq!(
@@ -281,5 +304,17 @@ mod tests {
                 .unwrap(),
             "SRC".to_string()
         );
+    }
+
+    #[cfg(target_family = "unix")]
+    #[test]
+    fn string_path_works() {
+        let mut path = "/home".to_string();
+        path.path_push("peter");
+        assert_eq!(path, "/home/peter".to_string());
+
+        path = "peter".to_string();
+        path.path_push("/home/peter/SRC");
+        assert_eq!(path, "/home/peter/SRC".to_string());
     }
 }
