@@ -150,6 +150,13 @@ macro_rules! str_path_join {
     }};
 }
 
+pub fn str_path_current_dir() -> io::Result<String> {
+    match env::current_dir() {
+        Ok(path_buf) => Ok(path_buf.to_string_lossy().into_owned()),
+        Err(e) => Err(e),
+    }
+}
+
 pub trait StrPath {
     fn path_components(&self) -> Vec<StrPathComponent>;
 }
@@ -261,6 +268,15 @@ impl<'a> From<Component<'a>> for StrPathComponent {
             Component::Normal(os_str) => {
                 StrPathComponent::Normal(os_str.to_string_lossy().into_owned())
             }
+        }
+    }
+}
+
+impl StrPathComponent {
+    pub fn is_normal(&self) -> bool {
+        match self {
+            StrPathComponent::Normal(_) => true,
+            _ => false,
         }
     }
 }
