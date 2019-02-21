@@ -21,7 +21,6 @@ pub use std::ffi::OsStr;
 pub use std::io;
 pub use std::path::{Component, Path, PathBuf, Prefix, MAIN_SEPARATOR};
 
-use std::iter::Map;
 use std::string::ToString;
 
 pub use dirs;
@@ -157,13 +156,57 @@ pub fn str_path_current_dir() -> io::Result<String> {
     }
 }
 
-pub trait StrPath {
-    fn path_components(&self) -> Vec<StrPathComponent>;
+pub fn str_path_current_dir_or_panic() -> String {
+    str_path_current_dir().expect("Could not find current directory.")
 }
 
-impl StrPath for String {
+pub trait StrPath {
+    fn path_absolute(&self) -> io::Result<String>;
+    fn path_components(&self) -> Vec<StrPathComponent>;
+    fn path_is_absolute(&self) -> bool;
+    fn path_is_relative(&self) -> bool;
+    fn path_is_relative_to_home(&self) -> bool;
+    fn path_file_name(&self) -> Option<String>;
+    fn path_join(&self, other: &str) -> String;
+    fn path_parent(&self) -> Option<String>;
+    fn path_simple_relative(&self) -> io::Result<String>;
+}
+
+impl StrPath for str {
+    fn path_absolute(&self) -> io::Result<String> {
+        str_path_absolute!(self)
+    }
+
     fn path_components(&self) -> Vec<StrPathComponent> {
         str_path_components!(self).collect()
+    }
+
+    fn path_is_absolute(&self) -> bool {
+        str_path_is_absolute!(self)
+    }
+
+    fn path_is_relative(&self) -> bool {
+        str_path_is_relative!(self)
+    }
+
+    fn path_is_relative_to_home(&self) -> bool {
+        str_path_is_relative_to_home!(self)
+    }
+
+    fn path_file_name(&self) -> Option<String> {
+        str_path_file_name!(self)
+    }
+
+    fn path_join(&self, other: &str) -> String {
+        str_path_join!(self, other)
+    }
+
+    fn path_parent(&self) -> Option<String> {
+        str_path_parent!(self)
+    }
+
+    fn path_simple_relative(&self) -> io::Result<String> {
+        str_path_simple_relative!(self)
     }
 }
 
@@ -287,7 +330,7 @@ mod tests {
 
     #[cfg(target_family = "unix")]
     #[test]
-    fn str_path_works() {
+    fn str_path_macros_work() {
         assert_eq!(
             str_path_file_name!("/home/peter"),
             Some("peter".to_string())
@@ -386,5 +429,11 @@ mod tests {
         path = "peter".to_string();
         path.path_push("/home/peter/SRC");
         assert_eq!(path, "/home/peter/SRC".to_string());
+    }
+
+    #[test]
+    fn str_path_works() {
+        assert!("/home".path_is_absolute());
+        assert!("/home".to_string().path_is_absolute());
     }
 }
