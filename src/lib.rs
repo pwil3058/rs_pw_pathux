@@ -197,7 +197,12 @@ impl UsableDirEntry {
 
 pub fn usable_dir_entries<P: AsRef<Path>>(dir_path: &P) -> io::Result<Vec<UsableDirEntry>> {
     let dir_path: &Path = dir_path.as_ref();
-    let read_dir = dir_path.read_dir()?;
+    // Treat the empty string as the current directory
+    let read_dir = if dir_path.as_os_str().len() == 0 {
+        Path::new("./").read_dir()?
+    } else {
+        dir_path.read_dir()?
+    };
     let mut entries: Vec<UsableDirEntry> = Vec::new();
     for e_entry in read_dir {
         match e_entry {
