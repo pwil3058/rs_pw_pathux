@@ -316,6 +316,20 @@ impl<'a> From<Component<'a>> for StrPathComponent {
 }
 
 impl StrPathComponent {
+    pub fn is_cur_dir(&self) -> bool {
+        match self {
+            StrPathComponent::CurDir => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_home_dir(&self) -> bool {
+        match self {
+            StrPathComponent::HomeDir => true,
+            _ => false,
+        }
+    }
+
     pub fn is_normal(&self) -> bool {
         match self {
             StrPathComponent::Normal(_) => true,
