@@ -164,12 +164,15 @@ pub trait StrPath {
     fn path_absolute(&self) -> io::Result<String>;
     fn path_components(&self) -> Vec<StrPathComponent>;
     fn path_is_absolute(&self) -> bool;
+    fn path_is_dir(&self) -> bool;
+    fn path_is_file(&self) -> bool;
     fn path_is_relative(&self) -> bool;
     fn path_is_relative_to_home(&self) -> bool;
     fn path_file_name(&self) -> Option<String>;
     fn path_join(&self, other: &str) -> String;
     fn path_parent(&self) -> Option<String>;
     fn path_simple_relative(&self) -> io::Result<String>;
+    fn path_starts_with(&self, prefix: &str) -> bool;
 }
 
 impl StrPath for str {
@@ -183,6 +186,14 @@ impl StrPath for str {
 
     fn path_is_absolute(&self) -> bool {
         str_path_is_absolute!(self)
+    }
+
+    fn path_is_dir(&self) -> bool {
+        Path::new(self).is_dir()
+    }
+
+    fn path_is_file(&self) -> bool {
+        Path::new(self).is_file()
     }
 
     fn path_is_relative(&self) -> bool {
@@ -207,6 +218,10 @@ impl StrPath for str {
 
     fn path_simple_relative(&self) -> io::Result<String> {
         str_path_simple_relative!(self)
+    }
+
+    fn path_starts_with(&self, prefix: &str) -> bool {
+        Path::new(self).starts_with(Path::new(prefix))
     }
 }
 
