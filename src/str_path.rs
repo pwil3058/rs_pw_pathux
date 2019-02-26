@@ -353,6 +353,32 @@ impl StrPathComponent {
     }
 }
 
+pub trait ToStringPath {
+    fn to_string_path(&self) -> String;
+}
+
+impl ToStringPath for Path {
+    fn to_string_path(&self) -> String {
+        self.to_string_lossy().to_owned().to_string()
+    }
+}
+
+impl ToStringPath for PathBuf {
+    fn to_string_path(&self) -> String {
+        self.to_string_lossy().to_owned().to_string()
+    }
+}
+
+impl ToStringPath for [StrPathComponent] {
+    fn to_string_path(&self) -> String {
+        let mut path_buf = PathBuf::new();
+        for component in self.iter() {
+            path_buf.push(component.to_string());
+        }
+        path_buf.to_string_lossy().to_owned().to_string()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -464,5 +490,21 @@ mod tests {
     fn str_path_works() {
         assert!("/home".path_is_absolute());
         assert!("/home".to_string().path_is_absolute());
+    }
+
+    #[test]
+    fn str_path_components_work() {
+        assert_eq!(
+            Path::new("/home/peter/SRC").to_string_path(),
+            "/home/peter/SRC".to_string()
+        );
+        let mut path_buf = PathBuf::new();
+        path_buf.push("/home/peter/SRC");
+        assert_eq!(path_buf.to_string_path(), "/home/peter/SRC".to_string());
+
+        let components = "/home/peter/SRC".path_components();
+        assert_eq!(components[2..].to_string_path(), "peter/SRC".to_string());
+        let components = "home/peter/SRC".path_components();
+        assert_eq!(components[1..].to_string_path(), "peter/SRC".to_string());
     }
 }
