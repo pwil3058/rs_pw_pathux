@@ -140,6 +140,30 @@ macro_rules! str_path_simple_relative {
 }
 
 #[macro_export]
+macro_rules! str_path_simple_relative_home {
+    ( $s:expr ) => {{
+        match dirs::home_dir() {
+            Some(home_dir) => match str_path_absolute!($s) {
+                Ok(abs_path) => match Path::new(&abs_path).strip_prefix(home_dir) {
+                    Ok(path) => {
+                        let mut home = PathBuf::new();
+                        home.push("~");
+                        home.push(&path);
+                        Ok(home.to_string_lossy().into_owned())
+                    },
+                    Err(err) => Err(io::Error::new(io::ErrorKind::Other, err)),
+                },
+                Err(err) => Err(err),
+            },
+            None =>Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    "could not find home directory",
+                )),
+        }
+    }};
+}
+
+#[macro_export]
 macro_rules! str_path_join {
     ( $s1:expr, $s2:expr ) => {{
         Path::new($s1)
@@ -158,6 +182,17 @@ pub fn str_path_current_dir() -> io::Result<String> {
 
 pub fn str_path_current_dir_or_panic() -> String {
     str_path_current_dir().expect("Could not find current directory.")
+}
+
+pub fn str_path_current_dir_rel_home() -> io::Result<String> {
+    match env::current_dir() {
+        Ok(path_buf) => str_path_simple_relative_home!(&path_buf.to_string_lossy().into_owned()),
+        Err(e) => Err(e),
+    }
+}
+
+pub fn str_path_current_dir_or_rel_home_panic() -> String {
+    str_path_current_dir_rel_home().expect("Could not find current directory.")
 }
 
 pub trait StrPath {
