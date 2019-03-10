@@ -25,6 +25,15 @@ use std::path::{Component, Path, PathBuf, MAIN_SEPARATOR};
 #[macro_use]
 pub mod str_path;
 
+pub fn strip_n_levels<P: AsRef<Path>>(path: &P, n: usize) -> PathBuf {
+    let path: &Path = path.as_ref();
+    let mut components = path.components();
+    for _ in 0..n {
+        components.next();
+    }
+    components.as_path().to_path_buf()
+}
+
 pub fn split_path_text(text: &str) -> (&str, &str) {
     if let Some(index) = text.rfind(MAIN_SEPARATOR) {
         (&text[..index + 1], &text[index + 1..])
@@ -304,5 +313,18 @@ mod tests {
         assert_eq!(dir_path_text("./something"), "./");
         assert_eq!(dir_path_text("~/something/somethingelse"), "~/something/");
         assert_eq!(dir_path_text("./something/somethingelse"), "./something/");
+    }
+
+    #[test]
+    fn strip_n_levels_works() {
+        assert_eq!(strip_n_levels(&"a/b/c", 0), PathBuf::from("a/b/c"));
+        assert_eq!(strip_n_levels(&"a/b/c", 1), PathBuf::from("b/c"));
+        assert_eq!(strip_n_levels(&"a/b/c", 2), PathBuf::from("c"));
+        assert_eq!(strip_n_levels(&PathBuf::from("a/b/c"), 0), PathBuf::from("a/b/c"));
+        assert_eq!(strip_n_levels(&PathBuf::from("a/b/c"), 1), PathBuf::from("b/c"));
+        assert_eq!(strip_n_levels(&PathBuf::from("a/b/c"), 2), PathBuf::from("c"));
+        assert_eq!(strip_n_levels(&Path::new("a/b/c"), 0), PathBuf::from("a/b/c"));
+        assert_eq!(strip_n_levels(&Path::new("a/b/c"), 1), PathBuf::from("b/c"));
+        assert_eq!(strip_n_levels(&Path::new("a/b/c"), 2), PathBuf::from("c"));
     }
 }

@@ -25,6 +25,8 @@ use std::string::ToString;
 
 pub use dirs;
 
+use super::strip_n_levels;
+
 #[macro_export]
 macro_rules! str_path_file_name {
     ( $s:expr ) => {
@@ -208,6 +210,7 @@ pub trait StrPath {
     fn path_parent(&self) -> Option<String>;
     fn path_simple_relative(&self) -> io::Result<String>;
     fn path_starts_with(&self, prefix: &str) -> bool;
+    fn path_stripped_of_n_levels(&self, n: usize) -> String;
 }
 
 impl StrPath for str {
@@ -257,6 +260,10 @@ impl StrPath for str {
 
     fn path_starts_with(&self, prefix: &str) -> bool {
         Path::new(self).starts_with(Path::new(prefix))
+    }
+
+    fn path_stripped_of_n_levels(&self, n: usize) -> String {
+        strip_n_levels(&self, n).to_string_lossy().to_string()
     }
 }
 
@@ -541,5 +548,10 @@ mod tests {
         assert_eq!(components[2..].to_string_path(), "peter/SRC".to_string());
         let components = "home/peter/SRC".path_components();
         assert_eq!(components[1..].to_string_path(), "peter/SRC".to_string());
+    }
+
+    #[test]
+    fn stripped_of_n_levels_works() {
+        assert_eq!("a/b/c".path_stripped_of_n_levels(1), "b/c".to_string());
     }
 }
