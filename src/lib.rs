@@ -320,10 +320,22 @@ mod tests {
         assert_eq!(strip_n_levels(&"a/b/c", 0), PathBuf::from("a/b/c"));
         assert_eq!(strip_n_levels(&"a/b/c", 1), PathBuf::from("b/c"));
         assert_eq!(strip_n_levels(&"a/b/c", 2), PathBuf::from("c"));
-        assert_eq!(strip_n_levels(&PathBuf::from("a/b/c"), 0), PathBuf::from("a/b/c"));
-        assert_eq!(strip_n_levels(&PathBuf::from("a/b/c"), 1), PathBuf::from("b/c"));
-        assert_eq!(strip_n_levels(&PathBuf::from("a/b/c"), 2), PathBuf::from("c"));
-        assert_eq!(strip_n_levels(&Path::new("a/b/c"), 0), PathBuf::from("a/b/c"));
+        assert_eq!(
+            strip_n_levels(&PathBuf::from("a/b/c"), 0),
+            PathBuf::from("a/b/c")
+        );
+        assert_eq!(
+            strip_n_levels(&PathBuf::from("a/b/c"), 1),
+            PathBuf::from("b/c")
+        );
+        assert_eq!(
+            strip_n_levels(&PathBuf::from("a/b/c"), 2),
+            PathBuf::from("c")
+        );
+        assert_eq!(
+            strip_n_levels(&Path::new("a/b/c"), 0),
+            PathBuf::from("a/b/c")
+        );
         assert_eq!(strip_n_levels(&Path::new("a/b/c"), 1), PathBuf::from("b/c"));
         assert_eq!(strip_n_levels(&Path::new("a/b/c"), 2), PathBuf::from("c"));
     }

@@ -152,15 +152,15 @@ macro_rules! str_path_simple_relative_home {
                         home.push("~");
                         home.push(&path);
                         Ok(home.to_string_lossy().into_owned())
-                    },
+                    }
                     Err(err) => Err(io::Error::new(io::ErrorKind::Other, err)),
                 },
                 Err(err) => Err(err),
             },
-            None =>Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "could not find home directory",
-                )),
+            None => Err(io::Error::new(
+                io::ErrorKind::Other,
+                "could not find home directory",
+            )),
         }
     }};
 }
