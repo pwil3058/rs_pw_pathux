@@ -15,7 +15,6 @@
 pub extern crate dirs;
 
 use std::env;
-use std::error::Error;
 use std::ffi::OsString;
 use std::fs::{DirEntry, FileType, Metadata};
 use std::io;
@@ -240,7 +239,7 @@ pub fn usable_dir_entries<P: AsRef<Path>>(dir_path: &P) -> io::Result<Vec<Usable
                             }
                         }
                         _ => {
-                            panic!("{:?}: {:?}: {:?}", err.kind(), err.description(), dir_entry);
+                            panic!("{:?}: {:?}: {:?}", err.kind(), err, dir_entry);
                         }
                     },
                 }
@@ -265,7 +264,7 @@ pub fn usable_dir_entries<P: AsRef<Path>>(dir_path: &P) -> io::Result<Vec<Usable
                     }
                 }
                 _ => {
-                    panic!("{:?}: {:?}: {:?}", err.kind(), err.description(), dir_path);
+                    panic!("{:?}: {:?}: {:?}", err.kind(), err, dir_path);
                 }
             },
         }
